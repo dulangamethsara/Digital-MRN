@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRN System v2.2</title>
+    <style>
+        :root {
+            --primary: #1a73e8; --success: #0f9d58; --danger: #d93025;
+            --bg: #f8f9fa; --card: #ffffff; --text: #202124; --muted: #5f6368; --border: #dadce0;
+        }
+        [data-theme="dark"] {
+            --bg: #202124; --card: #292a2d; --text: #e8eaed; --muted: #9aa0a6; --border: #5f6368;
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        
+        .nav-bar { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap; 
+            margin: 0 auto 20px auto; 
+            background: var(--card); 
+            padding: 10px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border); 
+            justify-content: center; 
+            max-width: 1100px; 
+            box-sizing: border-box;
+            align-items: center;
+        }
+
+        .nav-bar a { text-decoration: none; padding: 8px 14px; background: var(--bg); color: var(--text); border-radius: 6px; font-weight: 600; font-size: 13px; border: 1px solid var(--border); cursor: pointer; }
+        .nav-bar a.active { background: var(--primary); color: #fff; }
+        
+        .theme-btn { 
+            background: transparent; border: none; cursor: pointer; font-size: 20px; 
+            padding: 4px 8px; border-radius: 50%; transition: background 0.3s;
+        }
+        .theme-btn:hover { background: var(--bg); }
+
+        .container { background: var(--card); width: 100%; max-width: 1100px; padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin: 0 auto 20px auto; box-sizing: border-box; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .header-flex h2 { color: var(--primary); margin: 0; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .full { grid-column: span 2; }
+        label { font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); box-sizing: border-box; }
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; background: var(--primary); color: #fff; }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+        th { background: var(--bg); }
+        .hidden { display: none !important; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .status-Pending { background: #fff3cd; color: #856404; }
+        .status-Approved { background: #d4edda; color: #155724; }
+        .status-Rejected { background: #f8d7da; color: #721c24; }
+        .qty-input { width: 60px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--card); color: var(--text); font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar">
+    <a href="#" onclick="switchView('requester'); return false;" id="n-req" class="active">📝 Requester</a>
+    <a href="#" onclick="switchView('hod'); return false;" id="n-hod">👔 HOD</a>
+    <a href="#" onclick="switchView('mahinda'); return false;" id="n-mah">🔍 Review</a>
+    <a href="#" onclick="switchView('christopher'); return false;" id="n-chr">✅ Approval</a>
+    <a href="#" onclick="switchView('stores'); return false;" id="n-sto">🏢 Stores</a>
+    <a href="#" onclick="switchView('issued'); return false;" id="n-iss">📋 History</a>
+    <a href="#" onclick="switchView('materials'); return false;" id="n-mat">📦 Items</a>
+    
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme">☀️</button>
+</div>
+
+<!-- Status Result Modal View Container -->
+<div id="mrnStatusModal" class="container hidden">
+    <div class="header-flex">
+        <h2 id="statusModalTitle" style="color: var(--primary);">Status for: MRN-</h2>
+        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="closeMrnStatusModal()">✖ Close</button>
+    </div>
+    <table id="mrnStatusTable">
+        <thead>
+            <tr>
+                <th>Material Code</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>HOD Approval</th>
+                <th>Review (Mahinda)</th>
+                <th>Approval (Christopher)</th>
+                <th>Stores Issue</th>
+            </tr>
+        </thead>
+        <tbody id="mrnStatusTableBody"></tbody>
+    </table>
+</div>
+
+<!-- Requester View Container -->
+<div id="p-requester" class="container hidden">
+    <div class="header-flex">
+        <h2>Material Requirement Note - Requester Portal</h2>
+    </div>   
+    
+    <div class="header-actions-group" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+        <div class="mrn-status-box" style="display: flex; align-items: center; background: var(--card); border: 1.5px solid var(--primary); border-radius: 6px; padding: 4px;">
+            <input type="text" id="checkStatusInput" placeholder="Enter MRN Number" style="border: none; outline: none; padding: 6px 10px; font-size: 14px; color: var(--text); background: transparent; width: 160px;">
+            <button class="btn" style="padding: 6px 10px; font-size: 12px;" onclick="checkMrnStatus()">📊 Status</button>
+        </div>
+    </div>
+
+    <form id="mrnForm" class="form-grid">
+        <div><label>MRN Number</label><input type="text" id="mrnNo" readonly></div>
+        <div><label>Date</label><input type="date" id="mrnDate" readonly></div>
+        <div>
+            <label>Department</label>
+            <select id="mrnDep" required>
+                <option value="">Select Department</option>
+                <option>Production</option>
+                <option>Planning</option>
+                <option>Quality</option>
+                <option>Engineering</option>
+                <option>HR</option>
+                <option>Mixing</option>
+                <option>RMS</option>
+                <option>FGS</option>
+                <option>Finance</option>
+                <option>Purchasing/Supply Chain</option>
+                <option>Admin</option>
+                <option>IT</option>
+                <option>LAB</option>
+                <option>Bead</option>
+                <option>Eng Stores</option>
+                <option>Safety</option>
+                <option>Rim Mounting</option>
+                <option>Mixing Engineering</option>
+            </select>
+        </div>
+        <div>
+            <label>Plant</label>
+            <select id="mrnPlant" required>
+                <option value="">Select Plant</option>
+                <option>Tyre Plant</option>
+                <option>Mixing Plant</option>
+            </select>
+        </div>
+        
+        <div class="full"><label>Requested By</label><input type="text" id="mrnRequester" placeholder="Your Name" required></div>
+        
+        <div class="full" style="border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-top: 10px;">
+            <label style="color:var(--primary); margin-bottom: 8px;">Add Materials</label>
+            
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap:8px; margin-bottom:10px; align-items: center;">
+                <input type="text" id="matSearch" placeholder="Search item code/name..." onkeyup="filterMatList()">
+                <input type="number" id="matQty" placeholder="Qty">
+                <select id="itemUom">
+                    <option value="">Select UOM</option>
+                    <option value="kg">kg</option><option value="g">g</option><option value="Nos">Nos</option>
+                    <option value="Pcs">Pcs</option><option value="Ltrs">Ltrs</option><option value="Mtrs">Mtrs</option>
+                    <option value="Box">Box</option><option value="Roll">Roll</option><option value="Sets">Sets</option>
+                </select>
+                <input type="text" id="mrnMachine" list="machineList" placeholder="Select or type machine..." required>
+            </div>
+
+            <datalist id="machineList">
+                <option value="">Select Machine / Location</option>
+                <option value="MILL 01">MILL 01</option>
+                <option value="MILL 02">MILL 02</option>
+                <option value="MILL 03">MILL 03</option>
+                <option value="MILL 04">MILL 04</option>
+                <option value="MILL 05">MILL 05</option>
+                <option value="MILL 06">MILL 06</option>
+                <option value="CP 201">CP 201</option>
+                <option value="CP 301">CP 301</option>
+                <option value="CP 302">CP 302</option>
+                <option value="CP 303">CP 303</option>
+                <option value="CP 501">CP 501</option>
+                <option value="CP 601">CP 601</option>
+                <option value="CP 651">CP 651</option>
+                <option value="CP 801">CP 801</option>
+                <option value="CP 1101">CP 1101</option>
+                <option value="BUMPING PRESS">BUMPING PRESS</option>
+                <option value="NEW BUMPING PRESS">NEW BUMPING PRESS</option>
+                <option value="LUL 001 25 TON">LUL 001 25 TON</option>
+                <option value="LUL 002 50 TON">LUL 002 50 TON</option>
+                <option value="HOIST 3 TON">HOIST 3 TON</option>
+                <option value="HOIST 5 TON">HOIST 5 TON</option>
+                <option value="GENERATOR">GENERATOR</option>
+                <option value="SHIFT A">SHIFT A</option>
+                <option value="SHIFT B">SHIFT B</option>
+                <option value="SHIFT C">SHIFT C</option>
+                <option value="COMPRESSOR">COMPRESSOR</option>
+                <option value="COOLING TOWER">COOLING TOWER</option>
+                <option value="BOILER WOOD">BOILER WOOD</option>
+                <option value="BOILER FURNESS">BOILER FURNESS</option>
+                <option value="LAB PRESS">LAB PRESS</option>
+                <option value="RIM MOUTING">RIM MOUTING</option>
+                <option value="BLACK MIXING">BLACK MIXING</option>
+                <option value="WHITE MIXING">WHITE MIXING</option>
+                <option value="NEW MIXING">NEW MIXING</option>
+                <option value="CRAKER MILL">CRAKER MILL</option>
+                <option value="BEAD MACHINE">BEAD MACHINE</option>
+                <option value="PANNEL BOARD">PANNEL BOARD</option>
+                <option value="LAB">LAB</option>                
+                <option value="ENG WORKSHOP">ENG WORKSHOP</option>
+                <option value="MOULD WORKSHOP">MOULD WORKSHOP</option>
+                <option value="TPM POROJECT">TPM POROJECT</option>
+                <option value="TIRE REWORK-FINAL QC">TIRE REWORK-FINAL QC</option>
+                <option value="OFFICE">OFFICE</option>
+                <option value="ENG STORES">ENG STORES</option>
+                <option value="QC INSPECTION">QC INSPECTION</option>
+                <option value="CLEANNING">CLEANNING</option>
+                <option value="CANTEEN">CANTEEN</option>
+                <option value="GUARD ROOM">GUARD ROOM</option>
+                <option value="CAPEX">CAPEX</option>
+                <option value="KNEADER">KNEADER</option>
+                <option value="BATCH OFF">BATCH OFF</option>
+                <option value="BATCH OFF NEW">BATCH OFF NEW</option>
+                <option value="HR & Admin">HR & Admin</option>
+            </datalist>
+
+            <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border); margin-bottom: 10px;">
+                <table id="matLookupTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">Select</th>
+                            <th>Material Code</th>
+                            <th>Material Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="matTableBody"></tbody>
+                </table>
+            </div>
+            <button type="button" class="btn" style="width:100%" onclick="addItem()">+ Add to List</button>
+        </div>
+
+        <div class="full">
+            <table id="addedItemsTable">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>UOM</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="itemListBody"></tbody>
+            </table>
+        </div>
+        <button type="submit" class="btn btn-success full" id="submitMrnBtn">💾 Submit MRN</button>
+    </form>
+</div>
+
+<!-- Material Master Management Container -->
+<div id="p-materials" class="container hidden">
+    <div id="matAuthCard" class="auth-card" style="max-width:400px; margin: 40px auto; text-align:center;">
+        <h3>Material Master Login</h3>
+        <input type="password" id="matPass" placeholder="Enter Password" style="margin-bottom:10px;">
+        <button class="btn btn-success" style="width:100%" onclick="handleMatLogin()">Unlock</button>
+    </div>
+
+    <div id="matProtectedContent" class="hidden">
+        <div class="header-flex">
+            <h2>Material Master Management</h2>
+            <button class="btn btn-danger" onclick="location.reload()" style="padding: 6px 12px; font-size: 12px;">🔒 Logout</button>
+        </div>
+        <form id="materialMasterForm" class="form-grid" style="margin-bottom: 25px;">
+            <div>
+                <label>Item No (Material Code)</label>
+                <input type="text" id="newMatCode" placeholder="e.g., MAT-9999" required>
+            </div>
+            <div>
+                <label>Item Name (Description)</label>
+                <input type="text" id="newMatDesc" placeholder="e.g., Bearing SKF 6204" required>
+            </div>
+            <button type="submit" class="btn btn-success full" id="saveMatBtn">💾 Save Material to Master</button>
+        </form>
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+            <table id="masterMaterialsTable">
+                <thead>
+                    <tr><th style="width: 30%;">Item No</th><th>Item Name (Description)</th></tr>
+                </thead>
+                <tbody id="masterMaterialsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Role View Container -->
+<div id="p-role-view" class="container hidden">
+    <div id="roleAuth" class="auth-card" style="max-width:400px; margin: 40px auto; text-align:center;">
+        <h3 id="authTitle">Login</h3>
+        
+        <!-- HOD Departments Dropdown -->
+        <div id="hodDepWrap" class="hidden">
+            <select id="roleDep" style="margin-bottom:10px;">
+                <option value="">Select Dept</option>
+                <option>Production</option>
+                <option>Quality</option>
+                <option>Engineering</option>
+                <option>HR</option>
+                <option>Mixing</option>
+                <option>RMS</option>
+                <option>FGS</option>
+                <option>Finance</option>
+                <option>Purchasing/Supply Chain</option>
+                <option>IT</option>
+                <option>LAB</option>
+                <option>Mixing Engineering</option>
+            </select>
+        </div>
+        
+        <input type="password" id="rolePass" placeholder="Enter Password" style="margin-bottom:10px;">
+        <button class="btn btn-success" style="width:100%" onclick="handleLogin()">Unlock</button>
+    </div>
+
+    <div id="roleContent" class="hidden">
+        <div class="header-flex">
+            <h2 id="viewTitle">Approvals</h2>
+            <div style="display:flex; gap:10px;" id="headerActionButtons">
+                <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+                <button class="btn btn-danger" onclick="location.reload()">🔒 Logout</button>
+            </div>
+        </div>
+        
+        <div id="historyFilterBar" class="hidden" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px;">
+            <div><label>FROM DATE</label><input type="date" id="filterFromDate" style="background: var(--card);"></div>
+            <div><label>TO DATE</label><input type="date" id="filterToDate" style="background: var(--card);"></div>
+            <div>
+                <label>DEPARTMENT</label>
+                <select id="filterDepartment" style="background: var(--card);">
+                    <option value="">Select Department</option>
+                    <option>Production</option><option>Planning</option><option>Quality</option>
+                    <option>Engineering</option><option>HR</option><option>Mixing</option>
+                    <option>RMS</option><option>FGS</option><option>Finance</option>
+                    <option>Purchasing/Supply Chain</option><option>Admin</option><option>IT</option>
+                    <option>LAB</option><option>Bead</option><option>Eng Stores</option>
+                    <option>Safety</option><option>Rim Mounting</option><option>Mixing Engineering</option>
+                </select>
+            </div>
+            <div><button class="btn" style="background: var(--muted);" onclick="refreshData()">🔄 Refresh</button></div>
+        </div>
+
+        <div id="batchBar" class="nav-bar" style="justify-content: flex-start; gap:15px; padding:15px; max-width: 100%;">
+            <b>Batch Actions:</b>
+            <button class="btn btn-success" onclick="executeBatch('approve')">Approve Selected</button>
+            <button class="btn btn-danger" onclick="executeBatch('reject')">Reject Selected</button>
+            <input type="text" id="tableSearch" placeholder="Filter current list..." onkeyup="filterRows()" style="width:200px; margin-left:auto;">
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table id="mainDataTable" style="min-width: 1000px;">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const scriptURL = 'https://mrn-proxy.sunindustrial99.workers.dev/'; 
+    
+    // Updated Passwords Object
+    const HOD_PASSWORDS = { 
+        "Production":"PROD@2026", 
+        "Quality":"QUAL@2026", 
+        "Engineering":"ENG@2026", 
+        "Mixing":"MIX@2026", 
+        "RMS":"RMS@2026", 
+        "FGS":"FGS@2026",
+        "LAB":"LAB@2026",
+        "HR":"HR@2026", 
+        "Purchasing/Supply Chain":"SCM@2026", 
+        "Mixing Engineering":"MIXENG@2026", 
+        "Finance":"FIN@2026", 
+        "IT":"IT@2026", 
+        "Admin":"ADM@2026", 
+        "MASTER":"ADMIN@2026" 
+    };
+    
+    const ROLE_CONFIGS = {
+        'mahinda': { pass: ['MAH@2026', 'ADMIN@2026'], title: 'Reviewer Panel (Mahinda)', action: 'batchReviewAction' },
+        'christopher': { pass: ['CHR@2026', 'ADMIN@2026'], title: 'Approval Panel (Christopher)', action: 'batchApprovalAction' },
+        'stores': { pass: ['STORE@2026', 'ADMIN@2026'], title: 'Stores Issue Desk', action: 'batchStoresIssueAction' },
+        'issued': { pass: ['ISSUE@2026', 'ADMIN@2026'], title: 'Issued MRN History', action: 'none' },
+        'materials': { pass: ['MAT@2026', 'ADMIN@2026'], title: 'Material Master', action: 'addMaterialMaster' }
+    };
+
+    let currentView = 'requester'; 
+    let addedItems = [], masterMaterials = [];
+    let globalIssuedData = []; 
+
+    window.onload = () => { switchView('requester'); };
+
+    function switchView(viewName) {
+        currentView = viewName;
+        document.querySelectorAll('.nav-bar a').forEach(a => a.classList.remove('active'));
+        document.getElementById('n-' + viewName.substring(0,3)).classList.add('active');
+
+        document.getElementById('p-requester').classList.add('hidden');
+        document.getElementById('p-materials').classList.add('hidden');
+        document.getElementById('p-role-view').classList.add('hidden');
+        
+        document.getElementById('roleAuth').classList.remove('hidden');
+        document.getElementById('roleContent').classList.add('hidden');
+        document.getElementById('matAuthCard').classList.remove('hidden');
+        document.getElementById('matProtectedContent').classList.add('hidden');
+        
+        if(document.getElementById('rolePass')) document.getElementById('rolePass').value = '';
+        if(document.getElementById('matPass')) document.getElementById('matPass').value = '';
+        if(document.getElementById('roleDep')) document.getElementById('roleDep').value = '';
+        document.getElementById('hodDepWrap').classList.add('hidden');
+
+        if (viewName === 'requester') {
+            document.getElementById('p-requester').classList.remove('hidden');
+            initRequester();
+        } else if (viewName === 'materials') {
+            document.getElementById('p-materials').classList.remove('hidden');
+        } else {
+            document.getElementById('p-role-view').classList.remove('hidden');
+            setupRoleView();
+        }
+    }
+
+    function toggleTheme() {
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
+        document.getElementById('themeBtn').textContent = dark ? '🌙' : '☀️';
+    }
+
+    function initRequester() {
+        document.getElementById('mrnNo').value = 'MRN-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random()*8999);
+        document.getElementById('mrnDate').valueAsDate = new Date();
+        fetch(scriptURL + '?action=getMaterials').then(res => res.json()).then(data => {
+            masterMaterials = data;
+            renderMaterials(data);
+        });
+    }
+
+    function renderMaterials(data) {
+        document.getElementById('matTableBody').innerHTML = data.map(m => `
+            <tr>
+                <td style="width:30px"><input type="radio" name="matSel" value="${m.code}" data-desc="${m.description}"></td>
+                <td><b>${m.code}</b></td><td>${m.description}</td>
+            </tr>
+        `).join('');
+    }
+
+    function filterMatList() {
+        const q = document.getElementById('matSearch').value.toLowerCase();
+        const filtered = masterMaterials.filter(m => m.code.toLowerCase().includes(q) || m.description.toLowerCase().includes(q));
+        renderMaterials(filtered);
+    }
+
+    function addItem() {
+        const sel = document.querySelector('input[name="matSel"]:checked');
+        const qty = document.getElementById('matQty').value;
+        const uom = document.getElementById('itemUom').value;
+        if (!sel || !qty) return alert('Select material and qty');
+        addedItems.push({ code: sel.value, description: sel.dataset.desc, qty, uom });
+        renderAddedTable();
+    }
+
+    function renderAddedTable() {
+        document.getElementById('itemListBody').innerHTML = addedItems.map((it, i) => `
+            <tr><td>${it.code}</td><td>${it.description}</td><td>${it.qty}</td><td>${it.uom}</td>
+            <td><button type="button" class="btn btn-danger" onclick="addedItems.splice(${i},1);renderAddedTable()">X</button></td></tr>
+        `).join('');
+    }
+
+    document.getElementById('mrnForm').onsubmit = (e) => {
+        e.preventDefault();
+        if (!addedItems.length) return alert('Add items first');
+        const btn = document.getElementById('submitMrnBtn');
+        btn.disabled = true; btn.textContent = 'Submitting...';
+
+        const baseData = {
+            mrnNumber: document.getElementById('mrnNo').value,
+            date: document.getElementById('mrnDate').value,
+            dep: document.getElementById('mrnDep').value,
+            plant: document.getElementById('mrnPlant').value,
+            machine: document.getElementById('mrnMachine').value,
+            requestedBy: document.getElementById('mrnRequester').value
+        };
+
+        const payload = {
+            action: 'addMultiple',
+            baseData: baseData,
+            items: addedItems
+        };
+
+        fetch(scriptURL, {
+            method: 'POST', mode: 'no-cors', body: JSON.stringify(payload)
+        }).then(() => {
+            alert('MRN Submitted: ' + baseData.mrnNumber);
+            location.reload();
+        }).catch(err => {
+            alert('MRN Submitted: ' + baseData.mrnNumber);
+            location.reload();
+        });
+    };
+
+    function checkMrnStatus() {
+        const no = document.getElementById('checkStatusInput').value.trim();
+        if (!no) return alert('Please enter an MRN Number');
+        
+        fetch(scriptURL + '?action=getData').then(res => res.json()).then(data => {
+            const items = data.filter(r => r.mrnNumber === no);
+            if (!items.length) return alert('MRN not found');
+            
+            document.getElementById('statusModalTitle').textContent = 'Status for: ' + no;
+            const tbody = document.getElementById('mrnStatusTableBody');
+            
+            tbody.innerHTML = items.map(i => `
+                <tr>
+                    <td>${i.materialCode || '-'}</td>
+                    <td>${i.materialDescription || '-'}</td>
+                    <td>${i.qty || '-'}</td>
+                    <td><span class="status-badge status-${i.hodApproval || 'Pending'}">${i.hodApproval || 'Pending'}</span></td>
+                    <td><span class="status-badge status-${i.reviewedBy || 'Pending'}">${i.reviewedBy || 'Pending'}</span></td>
+                    <td><span class="status-badge status-${i.approvedBy || 'Pending'}">${i.approvedBy || 'Pending'}</span></td>
+                    <td><span class="status-badge status-${i.issued === 'Issued' ? 'Approved' : (i.issued === 'Rejected' ? 'Rejected' : 'Pending')}">${i.issued === 'Issued' ? 'Issued' : (i.issued || 'Pending')}</span></td>
+                </tr>
+            `).join('');
+
+            document.getElementById('mrnStatusModal').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    function closeMrnStatusModal() { document.getElementById('mrnStatusModal').classList.add('hidden'); }
+
+    function setupRoleView() {
+        const conf = ROLE_CONFIGS[currentView];
+        document.getElementById('authTitle').textContent = conf ? conf.title : 'HOD Login';
+        if (currentView === 'hod') {
+            document.getElementById('hodDepWrap').classList.remove('hidden');
+        }
+    }
+
+    function handleLogin() {
+        const pass = document.getElementById('rolePass').value;
+        if (currentView === 'hod') {
+            const dep = document.getElementById('roleDep').value;
+            if (!dep) return alert('Please select a Department');
+            if (pass === HOD_PASSWORDS[dep] || pass === HOD_PASSWORDS['MASTER']) showRoleContent();
+            else alert('Wrong Password');
+        } else {
+            if (ROLE_CONFIGS[currentView].pass.includes(pass)) showRoleContent();
+            else alert('Access Denied');
+        }
+    }
+
+    function handleMatLogin() {
+        const pass = document.getElementById('matPass').value;
+        if (ROLE_CONFIGS['materials'].pass.includes(pass)) {
+            document.getElementById('matAuthCard').classList.add('hidden');
+            document.getElementById('matProtectedContent').classList.remove('hidden');
+            loadMasterMaterialsView();
+        } else alert('Wrong Password');
+    }
+
+    function showRoleContent() {
+        document.getElementById('roleAuth').classList.add('hidden');
+        document.getElementById('roleContent').classList.remove('hidden');
+        document.getElementById('viewTitle').textContent = ROLE_CONFIGS[currentView] ? ROLE_CONFIGS[currentView].title : currentView.toUpperCase() + ' Dashboard';
+        
+        if (currentView === 'issued') {
+            document.getElementById('historyFilterBar').classList.remove('hidden');
+            document.getElementById('batchBar').classList.add('hidden');
+            if(!document.getElementById('btnExportExcel')) {
+                const actionContainer = document.getElementById('headerActionButtons');
+                actionContainer.insertAdjacentHTML('afterbegin', `<button id="btnExportExcel" class="btn btn-success" onclick="exportTableToExcel()">📥 Export to Excel</button>`);
+            }
+        }
+        refreshData();
+    }
+
+    function refreshData() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '<tr><td colspan="12">Loading data...</td></tr>';
+        
+        fetch(scriptURL + '?action=getData').then(res => res.json()).then(data => {
+            let filtered = [];
+            const head = document.getElementById('tableHead');
+            
+            const standardApprovalHeader = `<tr>
+                <th><input type="checkbox" onclick="toggleAll(this)"></th>
+                <th>MRN No</th><th>Date</th><th>Department</th><th>Plant / Machine</th>
+                <th>Material Code</th><th>Material Description</th><th>Qty</th><th>UOM</th><th>Requester</th><th>Action</th>
+            </tr>`;
+
+            const getQtyInput = (idx, value) => `<input type="number" id="qty-${idx}" value="${value}" class="qty-input">`;
+
+            if (currentView === 'hod') {
+                const dep = document.getElementById('roleDep').value; 
+                
+                filtered = data.filter(r => {
+                    let isMatch = false;
+                    
+                    // Department Mapping Logic 
+                    if (dep === 'Production' && (r.dep === 'Production' || r.dep === 'Planning')) isMatch = true;
+                    else if (dep === 'FGS' && (r.dep === 'FGS' || r.dep === 'Rim Mounting' || r.dep === 'Bead')) isMatch = true;
+                    else if (dep === 'HR' && (r.dep === 'HR' || r.dep === 'Safety')) isMatch = true;
+                    else if (r.dep === dep) isMatch = true;
+
+                    return isMatch && r.hodApproval === 'Pending';
+                });
+                
+                head.innerHTML = standardApprovalHeader;
+                tbody.innerHTML = filtered.map(r => `<tr>
+                    <td><input type="checkbox" class="row-check" value="${r.rowIndex}"></td>
+                    <td>${r.mrnNumber}</td><td>${r.date}</td><td>${r.dep}</td><td>${r.plant} / ${r.machine}</td>
+                    <td>${r.materialCode}</td><td>${r.materialDescription}</td>
+                    <td>${getQtyInput(r.rowIndex, r.qty)}</td>
+                    <td>${r.uom}</td><td>${r.requestedBy}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-success" onclick="singleAction(${r.rowIndex}, 'hodApproveRow')">APPROVE</button>
+                            <button class="btn btn-danger" onclick="singleAction(${r.rowIndex}, 'hodRejectRow')">REJECT</button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            } 
+            else if (currentView === 'mahinda') {
+                filtered = data.filter(r => r.hodApproval === 'Approved' && r.reviewedBy === 'Pending');
+                head.innerHTML = standardApprovalHeader;
+                tbody.innerHTML = filtered.map(r => `<tr>
+                    <td><input type="checkbox" class="row-check" value="${r.rowIndex}"></td>
+                    <td>${r.mrnNumber}</td><td>${r.date}</td><td>${r.dep}</td><td>${r.plant} / ${r.machine}</td>
+                    <td>${r.materialCode}</td><td>${r.materialDescription}</td>
+                    <td>${getQtyInput(r.rowIndex, r.qty)}</td>
+                    <td>${r.uom}</td><td>${r.requestedBy}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-success" onclick="singleAction(${r.rowIndex}, 'mahindaApproveRow')">APPROVE</button>
+                            <button class="btn btn-danger" onclick="singleAction(${r.rowIndex}, 'mahindaRejectRow')">REJECT</button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            }
+            else if (currentView === 'christopher') {
+                filtered = data.filter(r => r.reviewedBy === 'Approved' && r.approvedBy === 'Pending');
+                head.innerHTML = standardApprovalHeader;
+                tbody.innerHTML = filtered.map(r => `<tr>
+                    <td><input type="checkbox" class="row-check" value="${r.rowIndex}"></td>
+                    <td>${r.mrnNumber}</td><td>${r.date}</td><td>${r.dep}</td><td>${r.plant} / ${r.machine}</td>
+                    <td>${r.materialCode}</td><td>${r.materialDescription}</td>
+                    <td>${getQtyInput(r.rowIndex, r.qty)}</td>
+                    <td>${r.uom}</td><td>${r.requestedBy}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-success" onclick="singleAction(${r.rowIndex}, 'christopherApproveRow')">APPROVE</button>
+                            <button class="btn btn-danger" onclick="singleAction(${r.rowIndex}, 'christopherRejectRow')">REJECT</button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            }
+            else if (currentView === 'stores') {
+                filtered = data.filter(r => r.approvedBy === 'Approved' && r.issued === 'Pending');
+                head.innerHTML = `<tr>
+                    <th><input type="checkbox" onclick="toggleAll(this)"></th>
+                    <th>MRN No</th><th>Date</th><th>Department</th><th>Plant / Machine</th>
+                    <th>Material Code</th><th>Material Description</th><th>Req Qty</th><th>UOM</th><th>Requester</th><th>Issue Qty</th><th>Action</th>
+                </tr>`;
+                tbody.innerHTML = filtered.map(r => `<tr>
+                    <td><input type="checkbox" class="row-check" value="${r.rowIndex}"></td>
+                    <td>${r.mrnNumber}</td><td>${r.date}</td><td>${r.dep}</td><td>${r.plant} / ${r.machine}</td>
+                    <td>${r.materialCode}</td><td>${r.materialDescription}</td><td>${r.qty}</td><td>${r.uom}</td><td>${r.requestedBy}</td>
+                    <td>${getQtyInput(r.rowIndex, r.qty)}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-success" onclick="issueItem(${r.rowIndex})">ISSUE</button>
+                            <button class="btn btn-danger" onclick="storesRejectItem(${r.rowIndex})">REJECT</button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            }
+            else if (currentView === 'issued') {
+                filtered = data.filter(r => r.issued === 'Issued');
+                
+                const fromDate = document.getElementById('filterFromDate').value;
+                const toDate = document.getElementById('filterToDate').value;
+                const selDept = document.getElementById('filterDepartment').value;
+
+                if (fromDate) filtered = filtered.filter(r => r.date >= fromDate);
+                if (toDate) filtered = filtered.filter(r => r.date <= toDate);
+                if (selDept) filtered = filtered.filter(r => r.dep === selDept);
+
+                globalIssuedData = filtered;
+
+                head.innerHTML = `<tr>
+                    <th>MRN NO</th>
+                    <th>DATE</th>
+                    <th>PLANT</th>
+                    <th>DEPARTMENT</th>
+                    <th>MACHINE</th>
+                    <th>REQUESTER</th>
+                    <th>MATERIAL CODE</th>
+                    <th>MATERIAL</th>
+                    <th>QTY</th>
+                    <th>COMBINED ID (MRN-PLANT-MACHINE)</th>
+                </tr>`;
+                
+                tbody.innerHTML = filtered.map(r => {
+                    const plantAbbr = r.plant ? r.plant.split(' ').map(w => w[0]).join('').toUpperCase() : '';
+                    const combinedId = `${r.mrnNumber}-${plantAbbr}-${r.machine}`.toUpperCase();
+                    
+                    return `<tr>
+                        <td>${r.mrnNumber}</td>
+                        <td>${r.date}</td>
+                        <td>${r.plant}</td>
+                        <td>${r.dep}</td>
+                        <td>${r.machine}</td>
+                        <td>${r.requestedBy}</td>
+                        <td>${r.materialCode}</td>
+                        <td>${r.materialDescription}</td>
+                        <td>${r.qty} ${r.uom}</td>
+                        <td><b>${combinedId}</b></td>
+                    </tr>`;
+                }).join('');
+            }
+
+            if(filtered.length === 0) tbody.innerHTML = '<tr><td colspan="12" style="text-align:center">No records found matching criteria.</td></tr>';
+        });
+    }
+
+    function exportTableToExcel() {
+        if (!globalIssuedData || !globalIssuedData.length) return alert('No data available to export');
+
+        let csv = 'MRN NO,DATE,PLANT,DEPARTMENT,MACHINE,REQUESTER,MATERIAL CODE,MATERIAL,QTY,COMBINED ID (MRN-PLANT-MACHINE)\n';
+        globalIssuedData.forEach(r => {
+            const plantAbbr = r.plant ? r.plant.split(' ').map(w => w[0]).join('').toUpperCase() : '';
+            const combinedId = `${r.mrnNumber}-${plantAbbr}-${r.machine}`.toUpperCase();
+            const qtyCombined = `${r.qty} ${r.uom}`;
+
+            csv += `"${r.mrnNumber}","${r.date}","${r.plant}","${r.dep}","${r.machine}","${r.requestedBy}","${r.materialCode}","${r.materialDescription}","${qtyCombined}","${combinedId}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `Issued_MRN_History_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const matForm = document.getElementById('materialMasterForm');
+        if (matForm) {
+            matForm.onsubmit = (e) => {
+                e.preventDefault();
+                const code = document.getElementById('newMatCode').value.trim();
+                const description = document.getElementById('newMatDesc').value.trim();
+                if (!code || !description) return alert('Please fill in both fields');
+
+                const btn = document.getElementById('saveMatBtn');
+                btn.disabled = true; btn.textContent = 'Saving...';
+
+                fetch(scriptURL, {
+                    method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'addMaterialMaster', materialCode: code, materialDescription: description })
+                }).then(() => {
+                    alert('Material added successfully!');
+                    document.getElementById('newMatCode').value = '';
+                    document.getElementById('newMatDesc').value = '';
+                    btn.disabled = false; btn.textContent = '💾 Save Material to Master';
+                    loadMasterMaterialsView();
+                });
+            };
+        }
+    });
+
+    function loadMasterMaterialsView() {
+        fetch(scriptURL + '?action=getMaterials').then(res => res.json()).then(data => {
+            masterMaterials = data;
+            renderMasterTable(data);
+        });
+    }
+
+    function renderMasterTable(data) {
+        const tbody = document.getElementById('masterMaterialsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = data.length ? data.map(m => `<tr><td><b>${m.code}</b></td><td>${m.description}</td></tr>`).join('') 
+            : '<tr><td colspan="2" style="text-align: center;">No materials found.</td></tr>';
+    }
+
+    function toggleAll(source) { document.querySelectorAll('.row-check').forEach(cb => cb.checked = source.checked); }
+
+    function executeBatch(decision) {
+        const checks = document.querySelectorAll('.row-check:checked');
+        const indices = Array.from(checks).map(c => parseInt(c.value));
+        if (!indices.length) return alert('No rows selected');
+        
+        let action = '';
+        if(currentView === 'hod') action = 'batchHodAction';
+        if(currentView === 'mahinda') action = 'batchReviewAction';
+        if(currentView === 'christopher') action = 'batchApprovalAction';
+        if(currentView === 'stores') action = 'batchStoresIssueAction';
+
+        const updates = indices.map(idx => {
+            const qInput = document.getElementById('qty-' + idx);
+            return { rowIndex: idx, qty: qInput ? qInput.value : null };
+        });
+
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action, rowIndices: indices, decision, updates }) })
+        .then(() => { alert('Batch Updated'); refreshData(); });
+    }
+
+    function singleAction(rowIndex, action) {
+        const qInput = document.getElementById('qty-' + rowIndex);
+        const qty = qInput ? qInput.value : null;
+
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action, rowIndex, qty }) })
+        .then(() => { alert('Updated'); refreshData(); });
+    }
+
+    function issueItem(rowIndex) {
+        const qInput = document.getElementById('qty-' + rowIndex);
+        const issuedQty = qInput ? qInput.value : null;
+
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'readyToIssue', rowIndex, issuedQty }) })
+        .then(() => { alert('Item Issued'); refreshData(); });
+    }
+
+    function storesRejectItem(rowIndex) {
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'storesRejectRow', rowIndex }) })
+        .then(() => { alert('Item Rejected'); refreshData(); });
+    }
+
+    function filterRows() {
+        const q = document.getElementById('tableSearch').value.toLowerCase();
+        document.querySelectorAll('#tableBody tr').forEach(tr => {
+            tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+</script>
+</body>
+</html>
